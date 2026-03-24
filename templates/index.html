@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta
+      name="viewport"
+      content="width=720, height=720, initial-scale=1, maximum-scale=1, user-scalable=no"
+    />
+    <title>Pi Round Spotify</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}" />
+  </head>
+  <body>
+    <!--
+      Full-screen kiosk target: 720x720 square with a circular "active" display region.
+      Implemented: layout shell, hit surface for gestures, album + typography stack.
+      TODO: Match safe margins to Waveshare round LCD bezel after hardware bring-up.
+    -->
+    <div id="app" class="app" aria-label="Spotify playback controller">
+      <div id="circle-stage" class="circle-stage touch-surface" tabindex="0" role="application">
+        <svg
+          class="progress-svg"
+          viewBox="0 0 720 720"
+          width="720"
+          height="720"
+          aria-hidden="true"
+        >
+          <circle
+            class="progress-svg__track"
+            cx="360"
+            cy="360"
+            r="332"
+            fill="none"
+            stroke-width="6"
+          />
+          <circle
+            id="progress-arc"
+            class="progress-svg__value"
+            cx="360"
+            cy="360"
+            r="332"
+            fill="none"
+            stroke-width="6"
+            stroke-linecap="round"
+            transform="rotate(-90 360 360)"
+          />
+        </svg>
+
+        <div class="album-frame">
+          <img
+            id="album-art"
+            class="album-art"
+            alt=""
+            src=""
+            width="420"
+            height="420"
+            decoding="async"
+          />
+        </div>
+
+        <div class="meta-block">
+          <h1 id="track-title" class="track-title">Connecting…</h1>
+          <p id="track-artists" class="track-artists"></p>
+          <p id="time-row" class="time-row">
+            <span id="time-elapsed">0:00</span>
+            <span class="time-sep">/</span>
+            <span id="time-total">0:00</span>
+          </p>
+        </div>
+
+        <div id="toast" class="toast" role="status" aria-live="polite"></div>
+        <div id="ring-debug" class="ring-debug" hidden></div>
+      </div>
+
+      <footer class="footer-hint">
+        <span id="mock-pill" class="mock-pill" hidden>mock data</span>
+        <span class="footer-note">tap · edge spin to seek</span>
+      </footer>
+    </div>
+
+    <script type="module" src="{{ url_for('static', filename='js/app.js') }}"></script>
+  </body>
+</html>

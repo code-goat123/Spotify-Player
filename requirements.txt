@@ -1,0 +1,4 @@
+# Flask backend for Pi-hosted Spotify controller
+flask>=3.0.0,<4
+python-dotenv>=1.0.0,<2
+requests>=2.31.0,<3

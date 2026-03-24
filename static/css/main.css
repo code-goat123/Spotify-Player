@@ -1,0 +1,276 @@
+/*
+ * Round 720×720 kiosk UI — circular content in a square frame.
+ * Implemented: circular mask, idle dim/scale, slow art rotation, progress ring.
+ * TODO: Calibrate font sizes and touch targets on the physical Waveshare panel.
+ */
+
+:root {
+  --stage-size: 720px;
+  --circle-radius: 360px;
+  --color-bg: #0a0b10;
+  --color-fg: #f4f5f7;
+  --color-muted: #9aa3b5;
+  --color-accent: #1ed760;
+  --color-dim: rgba(244, 245, 247, 0.28);
+  --ring-inner-ratio: 0.62;
+  --ring-outer-ratio: 0.985;
+  --idle-after-ms: 5000;
+  --transition-ui: 420ms cubic-bezier(0.22, 1, 0.36, 1);
+  --font-stack: "SF Pro Display", "Inter", "Segoe UI", system-ui, sans-serif;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  height: 100%;
+  background: #050608;
+  color: var(--color-fg);
+  font-family: var(--font-stack);
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
+  touch-action: none;
+}
+
+.app {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  background: radial-gradient(
+    circle at 50% 42%,
+    #151823 0%,
+    #050608 55%,
+    #000 100%
+  );
+}
+
+.circle-stage {
+  position: relative;
+  width: var(--stage-size);
+  height: var(--stage-size);
+  border-radius: 50%;
+  overflow: hidden;
+  background: radial-gradient(
+    circle at 50% 38%,
+    #1b2030 0%,
+    var(--color-bg) 52%,
+    #05060a 100%
+  );
+  box-shadow:
+    0 0 0 3px rgba(255, 255, 255, 0.06),
+    0 26px 80px rgba(0, 0, 0, 0.65),
+    inset 0 0 80px rgba(0, 0, 0, 0.35);
+  clip-path: circle(50% at 50% 50%);
+}
+
+.touch-surface {
+  cursor: pointer;
+}
+
+.touch-surface:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 6px;
+}
+
+.progress-svg {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.progress-svg__track {
+  stroke: rgba(255, 255, 255, 0.08);
+}
+
+.progress-svg__value {
+  stroke: var(--color-accent);
+  stroke-dasharray: 2087.5;
+  stroke-dashoffset: 2087.5;
+  filter: drop-shadow(0 0 10px rgba(30, 215, 96, 0.35));
+  transition: stroke-dashoffset 180ms linear;
+}
+
+.album-frame {
+  position: absolute;
+  left: 50%;
+  top: 46%;
+  transform: translate(-50%, -50%);
+  width: 420px;
+  height: 420px;
+  border-radius: 50%;
+  overflow: hidden;
+  box-shadow:
+    0 18px 50px rgba(0, 0, 0, 0.55),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.07);
+}
+
+.album-art {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transform-origin: 50% 50%;
+  opacity: 1;
+  transition:
+    opacity var(--transition-ui),
+    filter var(--transition-ui);
+  will-change: transform, opacity, filter;
+}
+
+.meta-block {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 52px;
+  text-align: center;
+  padding: 0 56px;
+  pointer-events: none;
+}
+
+.track-title {
+  margin: 0;
+  font-size: 34px;
+  font-weight: 650;
+  letter-spacing: 0.02em;
+  line-height: 1.12;
+  text-shadow: 0 10px 30px rgba(0, 0, 0, 0.55);
+  color: var(--color-fg);
+  transition:
+    transform var(--transition-ui),
+    opacity var(--transition-ui),
+    color var(--transition-ui);
+}
+
+.track-artists {
+  margin: 10px 0 0;
+  font-size: 19px;
+  color: var(--color-muted);
+  transition:
+    transform var(--transition-ui),
+    opacity var(--transition-ui),
+    color var(--transition-ui);
+}
+
+.time-row {
+  margin: 14px 0 0;
+  font-size: 15px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: rgba(154, 163, 181, 0.85);
+  transition: opacity var(--transition-ui);
+}
+
+.time-sep {
+  padding: 0 6px;
+  opacity: 0.55;
+}
+
+.toast {
+  position: absolute;
+  left: 50%;
+  top: 64px;
+  transform: translateX(-50%);
+  padding: 10px 18px;
+  border-radius: 999px;
+  font-size: 14px;
+  background: rgba(10, 12, 18, 0.72);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: var(--color-fg);
+  opacity: 0;
+  transition: opacity 220ms ease;
+  pointer-events: none;
+  max-width: 80%;
+  text-align: center;
+}
+
+.toast--visible {
+  opacity: 1;
+}
+
+.ring-debug {
+  position: absolute;
+  right: 18px;
+  top: 18px;
+  font-size: 12px;
+  color: var(--color-muted);
+  background: rgba(0, 0, 0, 0.35);
+  padding: 6px 10px;
+  border-radius: 8px;
+}
+
+.footer-hint {
+  margin-top: 14px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: rgba(200, 206, 220, 0.45);
+  font-size: 12px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+.mock-pill {
+  border-radius: 999px;
+  padding: 4px 10px;
+  border: 1px solid rgba(255, 176, 96, 0.45);
+  color: #ffc48a;
+  background: rgba(40, 26, 12, 0.55);
+}
+
+.footer-note {
+  opacity: 0.75;
+}
+
+/* Idle / sleep UI: smaller dimmer type, dimmer art, rotation handled on .album-art */
+.app.app--idle .track-title {
+  transform: scale(0.88);
+  opacity: 0.45;
+  color: var(--color-dim);
+}
+
+.app.app--idle .track-artists {
+  transform: translateY(-2px) scale(0.94);
+  opacity: 0.38;
+  color: var(--color-dim);
+}
+
+.app.app--idle .time-row {
+  opacity: 0.35;
+}
+
+.app.app--idle .album-art {
+  opacity: 0.55;
+  filter: saturate(0.82) brightness(0.82);
+  animation: idle-spin 78s linear infinite;
+}
+
+.app:not(.app--idle) .album-art {
+  animation: none;
+}
+
+@keyframes idle-spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (max-width: 760px) {
+  :root {
+    --stage-size: min(96vw, 720px);
+  }
+
+  .track-title {
+    font-size: calc(26px + 1vw);
+  }
+}
